@@ -1,0 +1,6 @@
+{
+  "RTI": {
+    "settingHint": "Automatically import items to controlled actors?",
+    "importSuccess": "Imported {0} in {1}"
+  }
+}
