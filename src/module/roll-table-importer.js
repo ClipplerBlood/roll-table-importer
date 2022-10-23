@@ -1,12 +1,14 @@
 import { registerSettings } from './settings.js';
-import { preloadTemplates } from './preloadTemplates.js';
 import { i18n, stringInject } from './utils.js';
+import { DEFAULT_SYSTEM_CONFIG } from './systems.js';
 
 // Initialize module
 Hooks.once('init', async () => {
+  game.rti = {
+    systemConfig: DEFAULT_SYSTEM_CONFIG,
+  };
   console.log('roll-table-importer | Initializing roll-table-importer');
   registerSettings();
-  await preloadTemplates();
 });
 
 Hooks.once('setup', async () => {});
@@ -43,7 +45,7 @@ Hooks.on('createChatMessage', async (message, options, userId) => {
   // If items are present, add them to actors
   if (itemsData.length === 0) return;
   for (const actor of controlledActors) {
-    await Item.create(itemsData, { parent: actor });
+    await addItemsToActor(actor, itemsData);
   }
 
   // Notify the user of items added
@@ -76,3 +78,45 @@ Hooks.on('renderRollTableConfig', (app, element, options) => {
   });
   importerSetting.insertBefore(results);
 });
+
+/**
+ * Adds the Items item to an actor, stacking them if possible
+ * @param {Actor} actor
+ * @param {Object[]} itemsData
+ * @returns {Promise<itemsData>}
+ */
+
+async function addItemsToActor(actor, itemsData) {
+  const systemConfig = game.rti.systemConfig[game.system.id];
+  const stackAttribute = systemConfig?.itemStackAttribute;
+  if (stackAttribute == null) return Item.create(itemsData, { parent: actor });
+  console.log(itemsData);
+
+  function itemMatches(charItem, tableItem) {
+    console.log(charItem.system, tableItem.system);
+    if (charItem.name !== tableItem.name) return false;
+
+    const flattenChar = flattenObject(charItem);
+    const flattenTable = flattenObject(tableItem);
+
+    for (const k of Object.keys(tableItem)) {
+      if (flattenChar[k] == null || flattenTable[k] == null) continue;
+      if (game.rti.systemConfig.matchAttributesBlacklist.includes(k)) continue;
+      if (flattenChar[k] !== flattenTable[k]) {
+        console.log(flattenChar[k], k);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  for (const item of itemsData) {
+    const match = actor.items.find((i) => itemMatches(i, item));
+    console.log(match);
+    if (match) {
+      await match.update({ [`system.${stackAttribute}`]: getProperty(match.system, stackAttribute) + 1 });
+    } else {
+      Item.create(itemsData, { parent: actor });
+    }
+  }
+}
