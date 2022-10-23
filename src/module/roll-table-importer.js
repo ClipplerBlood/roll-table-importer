@@ -1,20 +1,3 @@
-// SPDX-FileCopyrightText: 2022 Johannes Loher
-//
-// SPDX-License-Identifier: MIT
-
-/**
- * This is your JavaScript entry file for Foundry VTT.
- * Register custom settings, sheets, and constants using the Foundry API.
- * Change this heading to be more descriptive to your module, or remove it.
- * Author: [your name]
- * Content License: [copyright and-or license] If using an existing system
- *          you may want to put a (link to a) license or copyright
- *          notice here (e.g. the OGL).
- * Software License: [your license] Put your desired license here, which
- *           determines how others may use and modify your module.
- */
-
-// Import JavaScript modules
 import { registerSettings } from './settings.js';
 import { preloadTemplates } from './preloadTemplates.js';
 import { i18n, stringInject } from './utils.js';
@@ -22,61 +5,55 @@ import { i18n, stringInject } from './utils.js';
 // Initialize module
 Hooks.once('init', async () => {
   console.log('roll-table-importer | Initializing roll-table-importer');
-  // Assign custom classes and constants here
-
-  // Register custom module settings
   registerSettings();
-
-  // Preload Handlebars templates
   await preloadTemplates();
-  // Register custom sheets (if any)
 });
 
-// Setup module
-Hooks.once('setup', async () => {
-  // Do anything after initialization but before
-  // ready
-});
+Hooks.once('setup', async () => {});
 
-// When ready
-Hooks.once('ready', async () => {
-  // Do anything once the module is ready
-  game.tables.get('Ph9j4ps5VG5MTYHT').render(true);
-});
+Hooks.once('ready', async () => {});
 
-// Add any additional hooks if necessary
-
+// Listening for rolled table results
 Hooks.on('createChatMessage', async (message, options, userId) => {
+  // Check if the message is from a table
   const isFromTable = message.getFlag('core', 'RollTable');
   if (!isFromTable || userId !== game.userId) return;
 
+  // Get all controlled & owned token actors
   const controlledActors = canvas.tokens.controlled.map((t) => t.actor).filter((a) => a.isOwner);
   if (controlledActors.length === 0) return;
 
+  // Enrich the content so that data can be grabbed
   const enrichedContent = await TextEditor.enrichHTML(message.content, {
     async: true,
     rollData: message.getRollData(),
   });
 
-  const jqContent = $(enrichedContent);
-  const itemsUuid = jqContent.find('.table-results [data-uuid]').map((_, el) => el.dataset.uuid);
+  // Grab the data
+  const itemsUuid = $(enrichedContent)
+    .find('.table-results [data-uuid]')
+    .map((_, el) => el.dataset.uuid);
+
   const itemsData = [];
   for (const uuid of itemsUuid) {
     const item = await fromUuid(uuid);
     if (item) itemsData.push(item.toObject());
   }
 
+  // If items are present, add them to actors
   if (itemsData.length === 0) return;
   for (const actor of controlledActors) {
     await Item.create(itemsData, { parent: actor });
   }
 
+  // Notify the user of items added
   const itemNames = itemsData.map((i) => i.name).join(', ');
   const actorNames = controlledActors.map((a) => a.name).join(', ');
   const infoStr = stringInject(i18n('RTI.importSuccess'), [itemNames, actorNames]);
   ui.notifications.info(infoStr);
 });
 
+// Inject custom option in the table sheet
 Hooks.on('renderRollTableConfig', (app, element, options) => {
   const results = element.find('.results');
   if (!results) {
