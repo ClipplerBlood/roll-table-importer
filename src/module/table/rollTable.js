@@ -110,14 +110,14 @@ export class RTITable extends RollTable {
     const stackAttribute = this.itemStackAttribute;
     if (stackAttribute == null) return Item.create(itemsData, { parent: actor });
     for (const item of itemsData) {
-      const match = actor.items.find((i) => this.itemMatches(i, item));
+      const match = actor.getEmbeddedCollection('Item').find((i) => this.itemMatches(i, item));
       if (match) {
         const newStack = getProperty(match.system, stackAttribute) + (getProperty(item.system, stackAttribute) ?? 1);
         await match.update({
           [`system.${stackAttribute}`]: newStack,
         });
       } else {
-        Item.create(itemsData, { parent: actor });
+        await Item.create(itemsData, { parent: actor });
       }
     }
   }
