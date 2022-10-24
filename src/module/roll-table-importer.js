@@ -18,3 +18,20 @@ Hooks.once('init', async () => {
 Hooks.once('setup', async () => {});
 
 Hooks.once('ready', async () => {});
+
+function injectRightClickContentLink(appElement) {
+  const contentLinks = appElement.find('.content-link[data-type="RollTable"]');
+  contentLinks.mousedown(async (ev) => {
+    if (ev.which !== 3) return;
+    const tableUuid = ev.currentTarget.dataset.uuid;
+    if (!tableUuid) return;
+    const tableDocument = await fromUuid(tableUuid);
+    await tableDocument?.draw({
+      roll: Roll.create(tableDocument.formula),
+      rollMode: game.settings.get('core', 'rollMode'),
+    });
+  });
+}
+
+Hooks.on('renderItemSheet', (_app, element, _options) => injectRightClickContentLink(element));
+Hooks.on('renderActorSheet', (_app, element, _options) => injectRightClickContentLink(element));
