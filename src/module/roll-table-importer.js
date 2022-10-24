@@ -1,13 +1,18 @@
 import { registerSettings } from './settings.js';
 import { i18n, stringInject } from './utils.js';
 import { DEFAULT_SYSTEM_CONFIG } from './systems.js';
+import { RTITable } from './table/rollTable.js';
+import { RTITableConfig } from './table/rollTableConfig.js';
 
 // Initialize module
 Hooks.once('init', async () => {
+  console.log('roll-table-importer | Initializing roll-table-importer');
   game.rti = {
     systemConfig: DEFAULT_SYSTEM_CONFIG,
   };
-  console.log('roll-table-importer | Initializing roll-table-importer');
+
+  CONFIG.RollTable.documentClass = RTITable;
+  RollTables.registerSheet('roll-table-importer', RTITableConfig, { makeDefault: true });
   registerSettings();
 });
 
@@ -90,10 +95,8 @@ async function addItemsToActor(actor, itemsData) {
   const systemConfig = game.rti.systemConfig[game.system.id];
   const stackAttribute = systemConfig?.itemStackAttribute;
   if (stackAttribute == null) return Item.create(itemsData, { parent: actor });
-  console.log(itemsData);
 
   function itemMatches(charItem, tableItem) {
-    console.log(charItem.system, tableItem.system);
     if (charItem.name !== tableItem.name) return false;
 
     const flattenChar = flattenObject(charItem);
@@ -101,7 +104,7 @@ async function addItemsToActor(actor, itemsData) {
 
     for (const k of Object.keys(tableItem)) {
       if (flattenChar[k] == null || flattenTable[k] == null) continue;
-      if (game.rti.systemConfig.matchAttributesBlacklist.includes(k)) continue;
+      if (systemConfig?.matchAttributesBlacklist.includes(k)) continue;
       if (flattenChar[k] !== flattenTable[k]) {
         console.log(flattenChar[k], k);
         return false;
@@ -112,7 +115,6 @@ async function addItemsToActor(actor, itemsData) {
 
   for (const item of itemsData) {
     const match = actor.items.find((i) => itemMatches(i, item));
-    console.log(match);
     if (match) {
       await match.update({ [`system.${stackAttribute}`]: getProperty(match.system, stackAttribute) + 1 });
     } else {

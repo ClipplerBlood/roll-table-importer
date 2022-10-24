@@ -1,6 +1,8 @@
 {
   "RTI": {
     "settingHint": "Automatically import items to controlled actors?",
-    "importSuccess": "Imported {0} in {1}"
+    "importSuccess": "Imported {0} in {1}",
+    "qtFormulaLabel": "Qt",
+    "qtFormulaPlaceholder": "1"
   }
 }
