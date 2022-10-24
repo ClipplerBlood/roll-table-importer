@@ -26,8 +26,10 @@ function injectRightClickContentLink(appElement) {
     const tableUuid = ev.currentTarget.dataset.uuid;
     if (!tableUuid) return;
     const tableDocument = await fromUuid(tableUuid);
+    const roll = await tableDocument.roll();
     await tableDocument?.draw({
-      roll: Roll.create(tableDocument.formula),
+      roll: roll.roll,
+      results: roll.results,
       rollMode: game.settings.get('core', 'rollMode'),
     });
   });
